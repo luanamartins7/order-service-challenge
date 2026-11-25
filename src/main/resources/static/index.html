@@ -1,0 +1,730 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>order-service</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f6f8;
+    --panel: #ffffff;
+    --text: #1d2330;
+    --muted: #5f6b7c;
+    --border: #d9dee6;
+    --row: #f0f2f5;
+    --accent: #2457c5;
+    --accent-text: #ffffff;
+    --ok: #1d7a3e;
+    --warn: #a45a00;
+    --err: #b42318;
+    --code-bg: #f0f2f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171c;
+      --panel: #1c2027;
+      --text: #e3e7ee;
+      --muted: #97a1b0;
+      --border: #313844;
+      --row: #232831;
+      --accent: #5b8ef0;
+      --accent-text: #0d1117;
+      --ok: #4cc27a;
+      --warn: #e5a04b;
+      --err: #f07167;
+      --code-bg: #12151a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 12px 20px; background: var(--panel); border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 1;
+  }
+  header h1 { margin: 0; font-size: 17px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  main { max-width: 1400px; margin: 0 auto; padding: 16px 20px 40px; display: grid; gap: 16px; }
+  .grid-2 { display: grid; gap: 16px; grid-template-columns: 1fr; }
+  @media (min-width: 1000px) { .grid-2 { grid-template-columns: 1.2fr 1fr; } }
+  section {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px; min-width: 0;
+  }
+  section > h2 { margin: 0 0 10px; font-size: 15px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  h3 { margin: 0; font-size: 14px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; white-space: nowrap; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; background: var(--row); }
+  tr:last-child td { border-bottom: none; }
+  input {
+    font: inherit; color: var(--text); background: var(--bg);
+    border: 1px solid var(--border); border-radius: 5px; padding: 5px 8px; min-width: 0;
+  }
+  input:focus, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  input.w-xs { width: 70px; }
+  input.w-sm { width: 100px; }
+  input.w-md { width: 160px; }
+  button {
+    font: inherit; cursor: pointer; border-radius: 5px; padding: 5px 12px;
+    border: 1px solid var(--border); background: var(--row); color: var(--text);
+  }
+  button:hover { border-color: var(--muted); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+  button:disabled { opacity: .6; cursor: progress; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .field { display: flex; flex-direction: column; gap: 3px; }
+  .field > span { font-size: 12px; color: var(--muted); }
+  .stack { display: grid; gap: 10px; }
+  .items { display: grid; gap: 6px; }
+  .item-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
+  .msg { min-height: 1em; font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+  .msg:empty { display: none; }
+  .msg.err { color: var(--err); }
+  .msg.ok { color: var(--ok); }
+  .status { font-weight: 700; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .s2 { color: var(--ok); }
+  .s3 { color: var(--muted); }
+  .s4 { color: var(--warn); }
+  .s5, .s0 { color: var(--err); }
+  .results { display: grid; gap: 4px; font-size: 13px; }
+  .results:empty { display: none; }
+  .result { padding: 6px 8px; background: var(--row); border-radius: 5px; }
+  .order { border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; display: grid; gap: 8px; }
+  .order-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+  .order-head .grow { flex: 1; }
+  .totals { display: flex; flex-wrap: wrap; gap: 4px 20px; justify-content: flex-end; }
+  .totals b { font-variant-numeric: tabular-nums; }
+  .orders { display: grid; gap: 10px; }
+  .known { font-size: 12px; color: var(--muted); }
+  .log { display: grid; gap: 4px; }
+  .log-entry { border: 1px solid var(--border); border-radius: 5px; }
+  .log-entry summary { cursor: pointer; padding: 5px 10px; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+  .log-entry summary .path { word-break: break-all; }
+  .log-body { padding: 0 10px 10px; display: grid; gap: 8px; }
+  .log-body h4 { margin: 0 0 3px; font-size: 12px; color: var(--muted); font-weight: 600; }
+  pre {
+    margin: 0; padding: 8px; background: var(--code-bg); border-radius: 4px; overflow-x: auto;
+    font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre;
+  }
+  @media (max-width: 600px) {
+    header, main { padding-left: 12px; padding-right: 12px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>order-service</h1>
+  <button type="button" id="refresh-all">Refresh</button>
+</header>
+
+<main>
+  <div class="grid-2">
+    <section aria-labelledby="products-title">
+      <h2 id="products-title">Products</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">id</th>
+              <th scope="col">SKU</th>
+              <th scope="col">Name</th>
+              <th scope="col" class="num">Price</th>
+              <th scope="col" class="num">Stock</th>
+              <th scope="col">Change price</th>
+            </tr>
+          </thead>
+          <tbody id="products-body"></tbody>
+        </table>
+      </div>
+      <div class="msg" id="products-msg" role="status"></div>
+    </section>
+
+    <section aria-labelledby="new-order-title">
+      <h2 id="new-order-title">New order</h2>
+      <div class="stack">
+        <label class="field">
+          <span>Customer (customerId)</span>
+          <input id="order-customer" class="w-sm" type="text" inputmode="numeric" autocomplete="off" value="1">
+        </label>
+
+        <div class="field">
+          <span>Items</span>
+          <div class="items" id="order-items"></div>
+          <div class="row">
+            <button type="button" id="add-item">+ Add item</button>
+            <span class="known" id="known-products"></span>
+          </div>
+        </div>
+
+        <label class="field">
+          <span>Coupon (couponCode)</span>
+          <input id="order-coupon" class="w-md mono" type="text" list="coupon-codes" autocomplete="off" spellcheck="false">
+          <datalist id="coupon-codes">
+            <option value="WELCOME10"></option>
+            <option value="LASTDAY15"></option>
+            <option value="EXPIRED20"></option>
+          </datalist>
+        </label>
+
+        <div class="row">
+          <button type="button" class="primary" id="create-order">Create order</button>
+          <button type="button" id="create-retry">Create with retry</button>
+        </div>
+        <div class="muted small">Sends the same request twice with the same Idempotency-Key, as the app does after a timeout.</div>
+        <div class="msg" id="order-msg" role="status"></div>
+        <div class="results" id="order-results"></div>
+      </div>
+    </section>
+  </div>
+
+  <section aria-labelledby="customer-orders-title">
+    <h2 id="customer-orders-title">Customer orders</h2>
+    <div class="stack">
+      <div class="row">
+        <label class="field">
+          <span>Customer (customerId)</span>
+          <input id="lookup-customer" class="w-sm" type="text" inputmode="numeric" autocomplete="off" value="1">
+        </label>
+        <button type="button" id="lookup-customer-btn" style="align-self:flex-end">Search</button>
+        <span style="width:16px"></span>
+        <label class="field">
+          <span>Find order by id</span>
+          <input id="lookup-order" class="w-sm" type="text" inputmode="numeric" autocomplete="off">
+        </label>
+        <button type="button" id="lookup-order-btn" style="align-self:flex-end">Find order</button>
+      </div>
+      <div class="msg" id="orders-msg" role="status"></div>
+      <div id="single-order-wrap" hidden>
+        <h3 id="single-order-title" style="margin-bottom:6px"></h3>
+        <div class="orders" id="single-order"></div>
+      </div>
+      <div id="customer-orders-wrap" hidden>
+        <h3 id="customer-orders-heading" style="margin-bottom:6px"></h3>
+        <div class="orders" id="customer-orders"></div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="log-title">
+    <h2 id="log-title">Requests <button type="button" id="clear-log">Clear</button></h2>
+    <div class="log" id="log"></div>
+    <div class="muted small" id="log-empty">No requests yet.</div>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+var LOG_LIMIT = 50;
+var state = {
+  customerShown: null,
+  orderShown: null
+};
+
+/* ---------- DOM helpers ---------- */
+
+function $(id) { return document.getElementById(id); }
+
+function el(tag, attrs) {
+  var node = document.createElement(tag);
+  if (attrs) {
+    Object.keys(attrs).forEach(function (k) {
+      var v = attrs[k];
+      if (v === null || v === undefined) return;
+      if (k === 'text') node.textContent = v;
+      else if (k === 'className') node.className = v;
+      else if (k === 'onclick') node.addEventListener('click', v);
+      else node.setAttribute(k, v);
+    });
+  }
+  for (var i = 2; i < arguments.length; i++) {
+    var child = arguments[i];
+    if (child === null || child === undefined || child === false) continue;
+    node.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
+  }
+  return node;
+}
+
+function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+
+function setMsg(id, text, kind) {
+  var node = $(id);
+  node.textContent = text || '';
+  node.className = 'msg' + (kind ? ' ' + kind : '');
+}
+
+/* ---------- value formatting (display only) ---------- */
+
+function show(v) {
+  if (v === null || v === undefined) return '—';
+  return String(v);
+}
+
+// Shows the number exactly as received, padded to at least 2 decimal places.
+function money(v) {
+  if (v === null || v === undefined) return '—';
+  var s = String(v);
+  if (!/^-?\d+(\.\d+)?$/.test(s)) return s;
+  var parts = s.split('.');
+  var dec = parts[1] || '';
+  while (dec.length < 2) dec += '0';
+  return parts[0] + '.' + dec;
+}
+
+/* ---------- request body encoding ---------- */
+
+// A value typed by the user. Numeric-looking text is written to JSON as a number,
+// verbatim; empty text becomes null; anything else is written as a string.
+function Raw(text) { this.text = text; }
+
+function raw(text) { return new Raw(text); }
+
+var JSON_NUMBER = /^-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?$/;
+
+function toJson(value, indent) {
+  indent = indent || '';
+  var next = indent + '  ';
+  if (value instanceof Raw) {
+    var t = value.text.trim();
+    if (t === '') return 'null';
+    if (JSON_NUMBER.test(t)) return t;
+    return JSON.stringify(value.text);
+  }
+  if (Array.isArray(value)) {
+    if (value.length === 0) return '[]';
+    return '[\n' + value.map(function (v) { return next + toJson(v, next); }).join(',\n') + '\n' + indent + ']';
+  }
+  if (value !== null && typeof value === 'object') {
+    var keys = Object.keys(value);
+    if (keys.length === 0) return '{}';
+    return '{\n' + keys.map(function (k) {
+      return next + JSON.stringify(k) + ': ' + toJson(value[k], next);
+    }).join(',\n') + '\n' + indent + '}';
+  }
+  return JSON.stringify(value);
+}
+
+/* ---------- HTTP + log ---------- */
+
+function api(method, path, body, headers) {
+  var reqHeaders = { 'Accept': 'application/json' };
+  var bodyText = null;
+  if (body !== undefined) {
+    bodyText = toJson(body);
+    reqHeaders['Content-Type'] = 'application/json';
+  }
+  if (headers) Object.keys(headers).forEach(function (k) { reqHeaders[k] = headers[k]; });
+
+  var started = new Date();
+  return fetch(path, { method: method, headers: reqHeaders, body: bodyText })
+    .then(function (res) {
+      return res.text().then(function (text) {
+        var data = null;
+        if (text) {
+          try { data = JSON.parse(text); } catch (e) { data = null; }
+        }
+        var result = {
+          ok: res.ok,
+          status: res.status,
+          headers: res.headers,
+          data: data,
+          text: text
+        };
+        addLog(started, method, path, reqHeaders, bodyText, result);
+        return result;
+      });
+    }, function (err) {
+      var result = { ok: false, status: 0, headers: null, data: null, text: String(err), networkError: true };
+      addLog(started, method, path, reqHeaders, bodyText, result);
+      return result;
+    });
+}
+
+function errorText(res) {
+  var label = res.networkError ? 'Network error' : 'HTTP ' + res.status;
+  var d = res.data;
+  var parts = [label];
+  if (d && typeof d === 'object') {
+    if (d.detail) parts.push(String(d.detail));
+    else if (d.message) parts.push(String(d.message));
+    else if (d.error) parts.push(String(d.error));
+    if (Array.isArray(d.errors) && d.errors.length) parts.push(d.errors.map(String).join('\n'));
+  } else if (res.text) {
+    parts.push(res.text.length > 300 ? res.text.slice(0, 300) + '…' : res.text);
+  }
+  return parts.join(' — ');
+}
+
+function pretty(text) {
+  if (!text) return '(empty)';
+  try { return JSON.stringify(JSON.parse(text), null, 2); } catch (e) { return text; }
+}
+
+function statusClass(status) { return 'status s' + Math.floor(status / 100); }
+
+function pad(n, w) { var s = String(n); while (s.length < (w || 2)) s = '0' + s; return s; }
+
+function addLog(started, method, path, reqHeaders, bodyText, res) {
+  var time = pad(started.getHours()) + ':' + pad(started.getMinutes()) + ':' + pad(started.getSeconds()) + '.' + pad(started.getMilliseconds(), 3);
+
+  var reqHeaderLines = Object.keys(reqHeaders).map(function (k) { return k + ': ' + reqHeaders[k]; }).join('\n');
+  var resHeaderLines = '';
+  if (res.headers) {
+    var lines = [];
+    res.headers.forEach(function (v, k) { lines.push(k + ': ' + v); });
+    resHeaderLines = lines.join('\n');
+  }
+
+  var body = el('div', { className: 'log-body' },
+    el('div', null, el('h4', { text: 'Request headers' }), el('pre', { text: reqHeaderLines })),
+    bodyText !== null ? el('div', null, el('h4', { text: 'Request body' }), el('pre', { text: pretty(bodyText) })) : null,
+    resHeaderLines ? el('div', null, el('h4', { text: 'Response headers' }), el('pre', { text: resHeaderLines })) : null,
+    el('div', null, el('h4', { text: 'Response body' }), el('pre', { text: pretty(res.text) }))
+  );
+
+  var entry = el('details', { className: 'log-entry' },
+    el('summary', null,
+      el('span', { className: 'mono muted', text: time }),
+      el('span', { className: 'mono', text: method }),
+      el('span', { className: 'mono path', text: path }),
+      el('span', { className: statusClass(res.status), text: res.networkError ? 'network error' : String(res.status) })
+    ),
+    body
+  );
+
+  var log = $('log');
+  log.insertBefore(entry, log.firstChild);
+  while (log.children.length > LOG_LIMIT) log.removeChild(log.lastChild);
+  $('log-empty').hidden = true;
+}
+
+/* ---------- Products ---------- */
+
+function loadProducts() {
+  return api('GET', '/products').then(function (res) {
+    var tbody = $('products-body');
+    if (!res.ok || !Array.isArray(res.data)) {
+      setMsg('products-msg', errorText(res), 'err');
+      return;
+    }
+    setMsg('products-msg', '');
+    clear(tbody);
+    res.data.forEach(function (p) { tbody.appendChild(productRow(p)); });
+    renderKnownProducts(res.data);
+  });
+}
+
+function productRow(p) {
+  var inputId = 'price-' + String(p.id).replace(/[^A-Za-z0-9_-]/g, '_');
+  var input = el('input', {
+    id: inputId, type: 'text', inputmode: 'decimal', autocomplete: 'off',
+    className: 'w-sm', placeholder: 'new price'
+  });
+  var label = el('label', { 'for': inputId, className: 'muted small', text: 'New price for product ' + show(p.id) });
+  label.hidden = true;
+  var btn = el('button', { type: 'button', text: 'Save' });
+  btn.addEventListener('click', function () { updatePrice(p.id, input, btn); });
+  input.addEventListener('keydown', function (e) { if (e.key === 'Enter') updatePrice(p.id, input, btn); });
+
+  return el('tr', null,
+    el('td', { className: 'mono', text: show(p.id) }),
+    el('td', { className: 'mono', text: show(p.sku) }),
+    el('td', { text: show(p.name) }),
+    el('td', { className: 'num', text: money(p.price) }),
+    el('td', { className: 'num', text: show(p.stock) }),
+    el('td', null, el('div', { className: 'row' }, label, input, btn))
+  );
+}
+
+function renderKnownProducts(products) {
+  var text = 'Products: ' + products.map(function (p) {
+    return show(p.id) + ' = ' + show(p.sku);
+  }).join(' · ');
+  $('known-products').textContent = products.length ? text : '';
+}
+
+function updatePrice(id, input, btn) {
+  btn.disabled = true;
+  api('PUT', '/products/' + encodeURIComponent(id) + '/price', { price: raw(input.value) })
+    .then(function (res) {
+      if (res.ok) {
+        setMsg('products-msg', 'HTTP ' + res.status + ' — price of product ' + show(id) + ' updated.', 'ok');
+        input.value = '';
+      } else {
+        setMsg('products-msg', 'Product ' + show(id) + ': ' + errorText(res), 'err');
+      }
+      return afterMutation();
+    })
+    .then(function () { btn.disabled = false; });
+}
+
+/* ---------- New order ---------- */
+
+var itemSeq = 0;
+
+function addItemRow(productId, quantity) {
+  itemSeq++;
+  var pid = 'item-product-' + itemSeq;
+  var qid = 'item-qty-' + itemSeq;
+  var row = el('div', { className: 'item-row' },
+    el('label', { className: 'field' },
+      el('span', { text: 'Product (productId)' }),
+      el('input', { id: pid, type: 'text', inputmode: 'numeric', autocomplete: 'off', className: 'w-sm item-product', value: productId || '' })
+    ),
+    el('label', { className: 'field' },
+      el('span', { text: 'Quantity' }),
+      el('input', { id: qid, type: 'text', inputmode: 'numeric', autocomplete: 'off', className: 'w-xs item-qty', value: quantity || '' })
+    )
+  );
+  var remove = el('button', { type: 'button', text: 'Remove', 'aria-label': 'Remove item' });
+  remove.addEventListener('click', function () { row.parentNode.removeChild(row); });
+  row.appendChild(remove);
+  $('order-items').appendChild(row);
+}
+
+function orderBody() {
+  var items = [];
+  var rows = $('order-items').querySelectorAll('.item-row');
+  Array.prototype.forEach.call(rows, function (row) {
+    items.push({
+      productId: raw(row.querySelector('.item-product').value),
+      quantity: raw(row.querySelector('.item-qty').value)
+    });
+  });
+  var coupon = $('order-coupon').value;
+  return {
+    customerId: raw($('order-customer').value),
+    items: items,
+    couponCode: coupon.trim() === '' ? null : coupon
+  };
+}
+
+function resultLine(label, res) {
+  var parts = [
+    el('span', { text: label + ' ' }),
+    el('span', { className: statusClass(res.status), text: res.networkError ? 'network error' : String(res.status) })
+  ];
+  if (res.ok && res.data && typeof res.data === 'object') {
+    parts.push(el('span', { text: ' — order id ' }), el('b', { className: 'mono', text: show(res.data.id) }));
+  } else if (!res.ok) {
+    parts.push(el('span', { text: ' — ' + errorText(res) }));
+  }
+  var replayed = res.headers ? res.headers.get('Idempotent-Replayed') : null;
+  if (replayed !== null) {
+    parts.push(el('span', { className: 'mono muted', text: ' · Idempotent-Replayed: ' + replayed }));
+  }
+  var div = el('div', { className: 'result' });
+  parts.forEach(function (p) { div.appendChild(p); });
+  return div;
+}
+
+function setOrderButtons(disabled) {
+  $('create-order').disabled = disabled;
+  $('create-retry').disabled = disabled;
+}
+
+function createOrder() {
+  setOrderButtons(true);
+  setMsg('order-msg', '');
+  clear($('order-results'));
+  api('POST', '/orders', orderBody())
+    .then(function (res) {
+      $('order-results').appendChild(resultLine('Response:', res));
+      if (res.ok && res.data) showOrderAfterCreate(res.data);
+      return afterMutation();
+    })
+    .then(function () { setOrderButtons(false); });
+}
+
+function createWithRetry() {
+  setOrderButtons(true);
+  setMsg('order-msg', '');
+  clear($('order-results'));
+  var key = crypto.randomUUID();
+  var body = orderBody();
+  var headers = { 'Idempotency-Key': key };
+  $('order-results').appendChild(el('div', { className: 'muted small mono', text: 'Idempotency-Key: ' + key }));
+  var lastOk = null;
+  api('POST', '/orders', body, headers)
+    .then(function (first) {
+      $('order-results').appendChild(resultLine('1st request:', first));
+      if (first.ok && first.data) lastOk = first.data;
+      return api('POST', '/orders', body, headers);
+    })
+    .then(function (second) {
+      $('order-results').appendChild(resultLine('2nd request:', second));
+      if (second.ok && second.data) lastOk = second.data;
+      if (lastOk) showOrderAfterCreate(lastOk);
+      return afterMutation();
+    })
+    .then(function () { setOrderButtons(false); });
+}
+
+function showOrderAfterCreate(order) {
+  if (order && order.customerId !== null && order.customerId !== undefined) {
+    state.customerShown = String(order.customerId);
+    $('lookup-customer').value = state.customerShown;
+  }
+}
+
+/* ---------- Customer orders ---------- */
+
+function orderCard(o) {
+  var itemsBody = el('tbody');
+  (Array.isArray(o.items) ? o.items : []).forEach(function (it) {
+    itemsBody.appendChild(el('tr', null,
+      el('td', { className: 'mono', text: show(it.productId) }),
+      el('td', { className: 'mono', text: show(it.sku) }),
+      el('td', { className: 'num', text: show(it.quantity) }),
+      el('td', { className: 'num', text: money(it.unitPrice) }),
+      el('td', { className: 'num', text: money(it.lineTotal) })
+    ));
+  });
+
+  var msg = el('div', { className: 'msg', role: 'status' });
+  var cancelBtn = el('button', { type: 'button', text: 'Cancel' });
+  cancelBtn.addEventListener('click', function () { cancelOrder(o.id, cancelBtn, msg); });
+
+  return el('div', { className: 'order' },
+    el('div', { className: 'order-head' },
+      el('span', null, 'Order ', el('b', { className: 'mono', text: show(o.id) })),
+      el('span', null, el('span', { className: 'muted', text: 'status ' }), el('b', { className: 'mono', text: show(o.status) })),
+      el('span', null, el('span', { className: 'muted', text: 'customer ' }), el('span', { className: 'mono', text: show(o.customerId) })),
+      el('span', null, el('span', { className: 'muted', text: 'date ' }), el('span', { className: 'mono', text: show(o.createdAt) })),
+      el('span', null, el('span', { className: 'muted', text: 'coupon ' }), el('span', { className: 'mono', text: show(o.couponCode) })),
+      el('span', { className: 'grow' }),
+      cancelBtn
+    ),
+    el('div', { className: 'table-wrap' },
+      el('table', null,
+        el('thead', null, el('tr', null,
+          el('th', { scope: 'col', text: 'productId' }),
+          el('th', { scope: 'col', text: 'SKU' }),
+          el('th', { scope: 'col', className: 'num', text: 'Quantity' }),
+          el('th', { scope: 'col', className: 'num', text: 'Unit price' }),
+          el('th', { scope: 'col', className: 'num', text: 'Line total' })
+        )),
+        itemsBody
+      )
+    ),
+    el('div', { className: 'totals' },
+      el('span', null, el('span', { className: 'muted', text: 'Subtotal ' }), el('b', { text: money(o.subtotal) })),
+      el('span', null, el('span', { className: 'muted', text: 'Discount ' }), el('b', { text: money(o.discount) })),
+      el('span', null, el('span', { className: 'muted', text: 'Total ' }), el('b', { text: money(o.total) }))
+    ),
+    msg
+  );
+}
+
+function loadCustomerOrders() {
+  if (state.customerShown === null) return Promise.resolve();
+  var id = state.customerShown;
+  return api('GET', '/customers/' + encodeURIComponent(id) + '/orders').then(function (res) {
+    var wrap = $('customer-orders-wrap');
+    var list = $('customer-orders');
+    wrap.hidden = false;
+    clear(list);
+    $('customer-orders-heading').textContent = 'Customer ' + id;
+    if (!res.ok || !Array.isArray(res.data)) {
+      list.appendChild(el('div', { className: 'msg err', text: errorText(res) }));
+      return;
+    }
+    if (res.data.length === 0) {
+      list.appendChild(el('div', { className: 'muted', text: 'The API returned an empty list.' }));
+      return;
+    }
+    res.data.forEach(function (o) { list.appendChild(orderCard(o)); });
+  });
+}
+
+function loadSingleOrder() {
+  if (state.orderShown === null) return Promise.resolve();
+  var id = state.orderShown;
+  return api('GET', '/orders/' + encodeURIComponent(id)).then(function (res) {
+    var wrap = $('single-order-wrap');
+    var box = $('single-order');
+    wrap.hidden = false;
+    clear(box);
+    $('single-order-title').textContent = 'Order ' + id;
+    if (!res.ok || !res.data || typeof res.data !== 'object') {
+      box.appendChild(el('div', { className: 'msg err', text: errorText(res) }));
+      return;
+    }
+    box.appendChild(orderCard(res.data));
+  });
+}
+
+function cancelOrder(id, btn, msgNode) {
+  btn.disabled = true;
+  api('POST', '/orders/' + encodeURIComponent(id) + '/cancel').then(function (res) {
+    if (res.ok) {
+      setMsg('orders-msg', 'HTTP ' + res.status + ' — order ' + show(id) + ' cancelled.', 'ok');
+    } else {
+      setMsg('orders-msg', 'Order ' + show(id) + ': ' + errorText(res), 'err');
+      msgNode.textContent = errorText(res);
+      msgNode.className = 'msg err';
+    }
+    return afterMutation();
+  }).then(function () { btn.disabled = false; });
+}
+
+/* ---------- refresh ---------- */
+
+function afterMutation() {
+  return Promise.all([loadProducts(), loadCustomerOrders(), loadSingleOrder()]);
+}
+
+function refreshAll() {
+  var btn = $('refresh-all');
+  btn.disabled = true;
+  afterMutation().then(function () { btn.disabled = false; });
+}
+
+/* ---------- wiring ---------- */
+
+$('refresh-all').addEventListener('click', refreshAll);
+$('add-item').addEventListener('click', function () { addItemRow('', ''); });
+$('create-order').addEventListener('click', createOrder);
+$('create-retry').addEventListener('click', createWithRetry);
+
+$('lookup-customer-btn').addEventListener('click', function () {
+  state.customerShown = $('lookup-customer').value;
+  setMsg('orders-msg', '');
+  loadCustomerOrders();
+});
+$('lookup-customer').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') $('lookup-customer-btn').click();
+});
+
+$('lookup-order-btn').addEventListener('click', function () {
+  state.orderShown = $('lookup-order').value;
+  setMsg('orders-msg', '');
+  loadSingleOrder();
+});
+$('lookup-order').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') $('lookup-order-btn').click();
+});
+
+$('clear-log').addEventListener('click', function () {
+  clear($('log'));
+  $('log-empty').hidden = false;
+});
+
+addItemRow('2', '2');
+state.customerShown = $('lookup-customer').value;
+loadProducts();
+loadCustomerOrders();
+</script>
+</body>
+</html>
