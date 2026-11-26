@@ -74,6 +74,7 @@ public class OrderService {
         return orderRepository.findByCustomerIdOrderByCreatedAtDesc(customerId);
     }
 
+    @Transactional
     public Order cancel(Long id) {
         Order order = get(id);
         if (order.getStatus() == OrderStatus.CANCELLED) {
@@ -89,9 +90,8 @@ public class OrderService {
         return order;
     }
 
-    @Transactional
-    public void restoreStock(Order order) {
-        for (OrderItem item : order.getItems()) {
+    private void restoreStock(Order order) {
+        for (OrderItem item : orderRepository.findItemsWithProductByOrder(order)) {
             Product product = item.getProduct();
             product.setStock(product.getStock() + item.getQuantity());
         }
